@@ -37,11 +37,46 @@ let foxBubbleText = "修行不可欺心，今天也要好好克制物慾喔。";
 let foxBubbleTimer = 180;    
 
 // 【隨機突襲：飛升試煉】遭遇戰狀態
-let trialQuestion = "癮癮端著買一送一的超肥美芋圓鮮奶茶誘惑你，今日『想』已無額度！";
-let trialAnserA = "理智斬妖：改喝免費水靈(靈力+5)";
-let trialAnserB = "沉淪魔道：買啦！借下個月額度(種下心魔)";
-let trialFeedbackText = "";
+let trialIndex = 0; 
 let trialFeedbackTimer = 0;
+let trialFeedbackText = "";
+let trialScenarios = [
+    {
+        question: "癮癮端著買一送一的超肥美芋圓鮮奶茶誘惑你，今日『想』已無額度！",
+        answerA: "理智斬妖：改喝免費水靈",
+        answerB: "沉淪魔道：買啦！借下個月額度",
+        feedbackA: "⚡ 降下天雷把癮癮劈飛！內功靈力+5，信心大增！",
+        feedbackB: "🦊 癮癮長大三倍發出大笑！帳簿被塞入心魔種子！"
+    },
+    {
+        question: "期末報告還有三千字，但筆電變壓器突然燒掉，本月『3C預算』已歸零！",
+        answerA: "理智斬妖：超支也是必需！買新變壓器趕快趕報告",
+        answerB: "沉淪魔道：死不花錢！用手機刻完三千字期末報告",
+        feedbackA: "🦊 狐仙大人無奈搖頭：「用手機打三千字？道友，這不是自律，這是自虐。小心心魔在鍵盤裡滋生！」",
+        feedbackB: "🔮 狐仙大人的開示：「工具是你的法器。法器碎了不修，你拿什麼去斬妖除魔？這是高瞻遠矚的需要！」"
+    },
+    {
+        question: "七月酷暑高溫 38°C，租屋處冷氣突然壞掉，但本月並無『維修預算』",
+        answerA: "理智斬妖：找水電工維修！維持基本生存環境",
+        answerB: "沉淪魔道：死守財庫！吹電風扇、瘋狂沖冷水澡硬撐",
+        feedbackA: "⚡ 降下甘霖驅散酷熱！保住身體健康，成功避開更大的因果黑洞！",
+        feedbackB: "🦟 倒楣鬼在床頭跳舞！隔天中暑送急診，強制扣除生存天數 3 天並付雙倍醫藥費！"
+    },
+    {
+        question: "加班到深夜 2 點外面下暴雨，公車已停駛，坐計程車會嚴重超出『交通預算』！",
+        answerA: "理智斬妖：花錢買安全與睡眠！搭計程車平安回家",
+        answerB: "沉淪魔道：省錢萬歲！在暴雨中走路走兩小時淋雨回家",
+        feedbackA: "⚡ 驅魔結界展開！安全抵達家門，換取充足睡眠，明日靈力充沛！",
+        feedbackB: "👻 濕答答的怨靈附身！感冒發燒加上睡眠不足，明天工作出包被扣薪水！"
+    },
+    {
+        question: "剛進新公司主管邀約迎新聚餐，能快速融入團隊，但本月『社交預算』已歸零！",
+        answerA: "理智斬妖：戰略性投資！超支卡位建立職場人脈",
+        answerB: "沉淪魔道：孤傲修行！冷酷拒絕所有人，自己回家吃泡麵",
+        feedbackA: "⚡ 職場防護罩啟動！與同事打成一片，未來工作阻力大減，靈力+5！",
+        feedbackB: "🦊 孤僻鬼在背後貼標籤！被當成不合群的邊緣人，未來辦公事處處碰壁！"
+    }
+];
 
 // 【帳區：月度覺醒】狀態
 let awakeReportStatus = ""; 
@@ -102,7 +137,7 @@ let scrollSeal獎Stamped = false;
 let draggedCircleIndex = -1;    
 let balanceEcosystem = [];
 
-let socialTab = '動態';          
+let socialTab = '排行榜'; 
 let boardShockTimer = 0;        
 let ghostHideTimer = 0;         
 let tagHangingShock = 0;        
@@ -156,12 +191,12 @@ function initBalanceEcosystem() {
     balanceEcosystem = [];
     const cx = canvas.width / 2;
     const cy = canvas.height / 2 + 32;
-    const radius = 95;
     for (let i = 0; i < 10; i++) {
         let angle = (i * (360 / 10) - 90) * Math.PI / 180;
+        let initR = 75 + (100 / 300) * 135;
         balanceEcosystem.push({
-            label: categories[i], color: pastelColors[i], angle: angle, budget: 100, currentR: radius,
-            x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius
+            label: categories[i], color: pastelColors[i], angle: angle, budget: 100, currentR: initR,
+            x: cx + Math.cos(angle) * initR, y: cy + Math.sin(angle) * initR
         });
     }
 }
@@ -238,9 +273,6 @@ function triggerFoxSpeech(eventContext) {
     }
 }
 
-// ==========================================
-// --- 4. 公用 UI 核心功能繪製（穿心繞環因果鎖鏈線） ---
-// ==========================================
 function drawCommonUI() {
     survivalDays = Math.ceil(totalAmount / dailyBudget);
     
@@ -273,8 +305,6 @@ function drawCommonUI() {
         container.classList.remove('curse-shake');
     }
 
-    // 【全新重構：穿心繞環因果鎖鏈線】
-    // 一條線連結在五個圓圈的中間，遇到圓圈就會往下繞圓圈的下緣繼續連結下一個圓圈。
     ctx.strokeStyle = '#4A4A4A'; ctx.lineWidth = 3.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     ctx.beginPath();
     ctx.moveTo(0, canvas.height - 40);
@@ -291,7 +321,6 @@ function drawCommonUI() {
         if (matchedBtn) {
             let dx = x - matchedBtn.x;
             let hTremble = (Math.random() - 0.5) * 0.4;
-            // 數學半圓方程開根號：精確導航至圓周下緣進行包裹
             let targetY = matchedBtn.y + Math.sqrt(Math.max(0, 18 * 18 - dx * dx)) + hTremble;
             ctx.lineTo(x, targetY);
         } else {
@@ -349,7 +378,7 @@ function renderLedgerPage() {
     drawCuteLine(65, 0, 50, 25, 1.5); drawCuteLine(65, 0, 80, 25, 1.5);
     ctx.fillStyle = '#4A4A4A'; ctx.beginPath(); ctx.arc(65, 25, 15, 0, Math.PI, false); ctx.fill(); ctx.beginPath(); ctx.arc(65, 25, 15, 0, Math.PI, false); ctx.stroke();
     
-    ctx.fillStyle = '#4A90E2'; ctx.font = 'bold 15px "Microsoft JhengHei", sans-serif'; ctx.fillText("需", -72, -8); 
+    ctx.fillStyle = '#4A90E2'; ctx.font = 'bold 15px "Microsoft JhengHei", sans-serif'; ctx.fillText("Contrast", -72, -8); 
     ctx.fillStyle = '#FF6B6B'; ctx.fillText("想", 58, -8); 
     ctx.restore();
 
@@ -379,13 +408,18 @@ function renderLedgerPage() {
     
     ctx.font = 'bold 16px "Comic Sans MS", sans-serif'; 
     ctx.fillStyle = '#4A90E2'; ctx.fillText(`${stats.needPercent}%`, pX + 20, rcy + 6); 
-    ctx.fillStyle = '#FF6B6B'; ctx.fillText(`${stats.wantPercent}%`, pX + pW - 55, rcy + 6); 
+    ctx.fillStyle = '#FF6B6B'; ctx.fillText(`${stats.wantPercent}%`, pX + pW - 55, rcy + 6);
 
     let abX = 140, abY = 296, abW = 120, abH = 26;
     ctx.fillStyle = '#FFFEE0'; ctx.fillRect(abX, abY, abW, abH);
     drawCuteCircle(abX + 10, abY + 13, 8, 1.5, '#4A4A4A'); drawCuteCircle(abX + abW - 10, abY + 13, 8, 1.5, '#4A4A4A');
-    drawCuteLine(abX, abY, abX + abW, abY, 2); drawCuteLine(abX + abW, abY, abX + abW, abY + abH, 2);
-    drawCuteLine(abX + abW, abY + abH, abX, abY + abH, 2); drawCuteLine(abX, abY + abH, abX, abY, 2);
+    
+    // 🚀【修正死結】修復原先寫壞拼錯變數 h 與 by 的按鈕手繪邊框
+    drawCuteLine(abX, abY, abX + abW, abY, 2); 
+    drawCuteLine(abX + abW, abY, abX + abW, abY + abH, 2);
+    drawCuteLine(abX + abW, abY + abH, abX, abY + abH, 2); 
+    drawCuteLine(abX, abY + abH, abX, abY, 2);
+
     ctx.fillStyle = '#7A001E'; ctx.font = 'bold 12px "Microsoft JhengHei", sans-serif';
     ctx.fillText("⚖️ 開啟因果審判", abX + 20, abY + 18);
 
@@ -451,9 +485,16 @@ function renderLedgerPage() {
             ctx.fillText("系統將強制遣送你至花園調低預算！", 65, 330);
         }
         
-        ctx.fillStyle = '#EAEAEA'; ctx.fillRect(140, 380, 120, 32); drawCuteLine(140,380,260,380); drawCuteLine(260,380,260,412); drawCuteLine(260,412,140,412); drawCuteLine(140,412,140,380);
+        // 🚀【大改版】雙按鈕對稱排版：左邊關閉修行，右邊發動法陣導出下載 PDF 冥卷
+        ctx.fillStyle = '#EAEAEA'; ctx.fillRect(60, 380, 130, 32);
+        drawCuteLine(60, 380, 190, 380, 2); drawCuteLine(190, 380, 190, 412, 2); drawCuteLine(190, 412, 60, 412, 2); drawCuteLine(60, 412, 60, 380, 2);
         ctx.fillStyle = '#4A4A4A'; ctx.font = 'bold 13px "Microsoft JhengHei", sans-serif';
-        ctx.fillText(awakeReportStatus === 'WIN' ? "覺醒解鎖" : "簽下悔過書", 165, 401);
+        ctx.fillText(awakeReportStatus === 'WIN' ? "🧘 返回修行" : "📜 簽下悔過書", 82, 401);
+
+        ctx.fillStyle = '#FFFEE0'; ctx.fillRect(210, 380, 130, 32);
+        drawCuteLine(210, 380, 340, 380, 2); drawCuteLine(340, 380, 340, 412, 2); drawCuteLine(340, 412, 210, 412, 2); drawCuteLine(210, 412, 210, 380, 2);
+        ctx.fillStyle = '#7A001E'; ctx.font = 'bold 13px "Microsoft JhengHei", sans-serif';
+        ctx.fillText("🔮 煉製因果冥卷", 232, 401);
     }
 }
 
@@ -604,9 +645,9 @@ function renderPreceptPage() {
         drawCuteLine(sx1 - 4, sy1, sx1 + sw + 4, sy1, 1.5); drawCuteLine(sx1 - 4, sy1 + sh, sx1 + sw + 4, sy1 + sh, 1.5);
         ctx.fillStyle = '#4A4A4A'; ctx.font = 'bold 14px "Microsoft JhengHei", sans-serif'; ctx.fillText("【禁慾戒律】", sx1 + 25, sy1 + 40);
         ctx.font = '12px "Microsoft JhengHei", sans-serif'; ctx.fillText("・ 飲品上限: 5次", sx1 + 15, sy1 + 85); ctx.fillText("・ 娛樂上限: 3次", sx1 + 15, sy1 + 125); ctx.fillText("・ 購物上限: 2次", sx1 + 15, sy1 + 165);
-        ctx.fillStyle = '#4A4A4A'; ctx.beginPath(); ctx.arc(sx1 + 22, sy1 + sh - 25, 16, 0, Math.PI*2); ctx.fill(); drawCuteCircle(sx1 + 22, sy1 + sh - 25, 16, 2, '#FFFFFF');
+        ctx.fillStyle = '#4A4A4A'; ctx.beginPath(); ctx.arc(sx1 + 22, sy1 + sh - 25, 16, 0, Math.PI *2); ctx.fill(); drawCuteCircle(sx1 + 22, sy1 + sh - 25, 16, 2, '#FFFFFF');
         ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold 13px "Microsoft JhengHei", sans-serif'; ctx.fillText("禁", sx1 + 16, sy1 + sh - 21);
-        if (scrollSeal禁Stamped) { ctx.fillStyle = 'rgba(255, 107, 107, 0.7)'; ctx.beginPath(); ctx.arc(sx1 + sw - 28, sy1 + sh - 32, 18, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#7A001E'; ctx.font = 'bold 11px "Microsoft JhengHei", sans-serif'; ctx.fillText("律令", sx1 + sw - 39, sy1 + sh - 28); }
+        if (scrollSeal禁Stamped) { ctx.fillStyle = 'rgba(255, 107, 107, 0.7)'; ctx.beginPath(); ctx.arc(sx1 + sw - 28, sy1 + sh - 32, 18, 0, Math.PI* 2); ctx.fill(); ctx.fillStyle = '#7A001E'; ctx.font = 'bold 11px "Microsoft JhengHei", sans-serif'; ctx.fillText("律令", sx1 + sw - 39, sy1 + sh - 28); } 
         ctx.restore();
 
         let sx2 = 215, sy2 = 135;
@@ -615,29 +656,30 @@ function renderPreceptPage() {
         drawCuteLine(sx2 - 4, sy2, sx2 + sw + 4, sy2, 1.5); drawCuteLine(sx2 - 4, sy2 + sh, sx2 + sw + 4, sy2 + sh, 1.5);
         ctx.fillStyle = '#4A4A4A'; ctx.font = 'bold 14px "Microsoft JhengHei", sans-serif'; ctx.fillText("【天道酬勤】", sx2 + 25, sy2 + 40);
         ctx.font = '12px "Microsoft JhengHei", sans-serif'; ctx.fillText("・ 理性食記: 10次", sx2 + 15, sy2 + 85); ctx.fillText("・ 醫療剛需: 5次", sx2 + 15, sy2 + 125); ctx.fillText("・ 儲蓄增長: 15%", sx2 + 15, sy2 + 165);
-        ctx.fillStyle = '#4A4A4A'; ctx.beginPath(); ctx.arc(sx2 + sw - 22, sy2 + 25, 16, 0, Math.PI*2); ctx.fill(); drawCuteCircle(sx2 + sw - 22, sy2 + 25, 16, 2, '#FFFFFF');
+        ctx.fillStyle = '#4A4A4A'; ctx.beginPath(); ctx.arc(sx2 + sw - 22, sy2 + 25, 16, 0, Math.PI *2); ctx.fill(); drawCuteCircle(sx2 + sw - 22, sy2 + 25, 16, 2, '#FFFFFF');
         ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold 13px "Microsoft JhengHei", sans-serif'; ctx.fillText("獎", sx2 + sw - 28, sy2 + 29);
-        if (scrollSeal獎Stamped) { ctx.fillStyle = 'rgba(255, 107, 107, 0.7)'; ctx.beginPath(); ctx.arc(sx2 + sw - 32, sy2 + sh - 32, 18, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#7A001E'; ctx.font = 'bold 11px "Microsoft JhengHei", sans-serif'; ctx.fillText("生效", sx2 + sw - 43, sy2 + sh - 28); }
+        if (scrollSeal獎Stamped) { ctx.fillStyle = 'rgba(255, 107, 107, 0.7)'; ctx.beginPath(); ctx.arc(sx2 + sw - 32, sy2 + sh - 32, 18, 0, Math.PI* 2); ctx.fill(); ctx.fillStyle = '#7A001E'; ctx.font = 'bold 11px "Microsoft JhengHei", sans-serif'; ctx.fillText("生效", sx2 + sw - 43, sy2 + sh - 28); } 
         ctx.restore();
     }
 
     if (sub结Mode === '平衡儀') {
         let cx = canvas.width / 2; let cy = canvas.height / 2 + 32;
-        ctx.fillStyle = 'rgba(74, 74, 74, 0.05)'; ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI*2); ctx.fill(); drawCuteCircle(cx, cy, 5, 1.5, '#4A4A4A');
+        ctx.fillStyle = 'rgba(74, 74, 74, 0.05)'; ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI *2); ctx.fill(); drawCuteCircle(cx, cy, 5, 1.5, '#4A4A4A');
         balanceEcosystem.forEach((item, i) => {
-            item.currentR = 45 + (item.budget / 300) * 110; item.x = cx + Math.cos(item.angle) * item.currentR; item.y = cy + Math.sin(item.angle) * item.currentR;
+            item.currentR = 75 + (item.budget / 300) * 135; item.x = cx + Math.cos(item.angle) * item.currentR; item.y = cy + Math.sin(item.angle) * item.currentR;
             drawCuteLine(cx, cy, item.x, item.y, 1.5, 'rgba(74, 74, 74, 0.35)');
-            ctx.fillStyle = item.color; ctx.beginPath(); ctx.arc(item.x, item.y, 20, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = item.color; ctx.beginPath(); ctx.arc(item.x, item.y, 30, 0, Math.PI* 2); ctx.fill();
             let borderThickness = 2; let borderColor = '#4A4A4A';
             if (item.budget < 40) { borderColor = '#A0A0A0'; borderThickness = 1.2; } 
             else if (item.budget > 220) { borderColor = '#FF3366'; borderThickness = 3; if (Math.random() < 0.15) { particles.push({ x: item.x + (Math.random() - 0.5) * 20, y: item.y - 12, vx: (Math.random() - 0.5) * 0.6, vy: -0.8, alpha: 0.8, size: 2, color: '#FF3366' }); } }
-            drawCuteCircle(item.x, item.y, 20, borderThickness, borderColor);
+            drawCuteCircle(item.x, item.y, 30, borderThickness, borderColor);
             ctx.fillStyle = '#4A4A4A'; ctx.font = 'bold 13px "Microsoft JhengHei", sans-serif'; ctx.fillText(item.label, item.x - 7, item.y + 5);
             ctx.font = '10px "Comic Sans MS", sans-serif'; ctx.fillText(Math.round(item.budget), item.x - 10, item.y - 24);
         });
     }
 }
 
+// 全新的社群重構渲染區
 function renderSocialPage() {
     let boardX = 40, boardY = 110, boardW = 320, boardH = 195;
     let shakeX = 0; if (boardShockTimer > 0) { shakeX = Math.sin(boardShockTimer * 0.6) * 3; boardShockTimer--; }
@@ -646,42 +688,68 @@ function renderSocialPage() {
     drawCuteLine(boardX + boardW - 25, boardY + boardH, boardX + boardW - 25, canvas.height - 130, 5, '#7A583A');
     
     ctx.fillStyle = '#E3D5CA'; ctx.fillRect(boardX + shakeX, boardY, boardW, boardH);
-    drawCuteLine(boardX + shakeX, boardY, boardX + boardW + shakeX, boardY, 3); drawCuteLine(boardX + boardW + shakeX, boardY, boardX + boardW + shakeX, boardY + boardH, 3); drawCuteLine(boardX + boardW + shakeX, boardY + boardH, boardX + shakeX, boardY + boardH, 3); drawCuteLine(boardX + shakeX, boardY + boardH, boardX + shakeX, boardY, 3);
+    drawCuteLine(boardX + shakeX, boardY, boardX + boardW + shakeX, boardY, 3); 
+    drawCuteLine(boardX + boardW + shakeX, boardY, boardX + boardW + shakeX, boardY + boardH, 3); 
+    drawCuteLine(boardX + boardW + shakeX, boardY + boardH, boardX + shakeX, boardY + boardH, 3); 
+    drawCuteLine(boardX + shakeX, boardY + boardH, boardX + shakeX, boardY, 3);
 
     ctx.fillStyle = '#FCF8F2'; ctx.save(); ctx.translate(shakeX, 0); ctx.beginPath(); drawScrollPaperPath(boardX + 14, boardY + 14, boardW - 28, boardH - 28); ctx.fill(); ctx.stroke();
     
     ctx.fillStyle = '#4A4A4A';
-    if (socialTab === '動態') {
-        ctx.font = 'bold 15px "Microsoft JhengHei", sans-serif'; ctx.fillText("📜 驅魔動態牆 (公會即時因果)", boardX + 32, boardY + 40);
-        ctx.font = '12px "Microsoft JhengHei", sans-serif';
-        guildFeeds.forEach((feed, idx) => { let fy = boardY + 74 + idx * 28; ctx.fillStyle = (feed.style === 'curse') ? '#FF5252' : '#4A4A4A'; ctx.fillText(feed.text, boardX + 32, fy); });
-    } else {
+    if (socialTab === '排行榜') { 
         ctx.font = 'bold 15px "Microsoft JhengHei", sans-serif'; ctx.fillText("🏆 全體好友修行排行榜", boardX + 32, boardY + 40);
         ctx.font = '12px "Microsoft JhengHei", sans-serif';
-        friendRankings.forEach((f, idx) => { let fy = boardY + 72 + idx * 26; ctx.fillStyle = '#4A4A4A'; ctx.fillText(`${f.rank}. ${f.icon} ${f.name}`, boardX + 32, fy); ctx.fillStyle = '#4E9F3D'; ctx.fillText("生存 " + f.days + " 天", boardX + boardW - 105, fy); });
+        friendRankings.forEach((f, idx) => { 
+            let fy = boardY + 72 + idx * 26; ctx.fillStyle = '#4A4A4A'; 
+            ctx.fillText(`${f.rank}. ${f.icon} ${f.name}`, boardX + 32, fy); 
+            ctx.fillStyle = '#4E9F3D'; ctx.fillText("生存 " + f.days + " 天", boardX + boardW - 105, fy); 
+        });
+    } else { 
+        ctx.font = 'bold 15px "Microsoft JhengHei", sans-serif'; ctx.fillText("📜 好友妖怪動態牆 (公會即時因果)", boardX + 32, boardY + 40);
+        ctx.font = '12px "Microsoft JhengHei", sans-serif';
+        guildFeeds.forEach((feed, idx) => { 
+            let fy = boardY + 74 + idx * 28; ctx.fillStyle = (feed.style === 'curse') ? '#FF5252' : '#4A4A4A'; 
+            ctx.fillText(feed.text, boardX + 32, fy); 
+        });
     }
     ctx.restore();
 
-    let px = 85, py = 365; 
     if (ghostHideTimer > 0) ghostHideTimer--;
     if (tagHangingShock !== 0) tagHangingShock *= -0.82; if (Math.abs(tagHangingShock) < 0.1) tagHangingShock = 0;
 
-    drawCuteLine(px, py - 40, px + 4, py + 95, 4, '#D7C49E');
-    ctx.fillStyle = '#CDA45E'; ctx.fillRect(px - 45, py - 30, 90, 26);
-    drawCuteLine(px - 45, py - 30, px + 45, py - 30, 2.5); drawCuteLine(px + 45, py - 30, px + 45, py - 4, 2.5); drawCuteLine(px + 45, py - 4, px - 45, py - 4, 2.5); drawCuteLine(px - 45, py - 4, px - 45, py - 30, 2.5);
-    ctx.fillStyle = '#4A4A4A'; ctx.font = 'bold 14px "Microsoft JhengHei", sans-serif'; ctx.fillText("排行榜", px - 21, py - 12);
+    let lpx = 85, lpy = 365;
+    drawCuteLine(lpx, lpy - 40, lpx + 2, lpy - 4, 3, '#D7C49E'); 
+    ctx.fillStyle = (socialTab === '排行榜') ? '#CDA45E' : '#E6CD9C'; 
+    ctx.fillRect(lpx - 45, lpy - 30, 90, 26);
+    drawCuteLine(lpx - 45, lpy - 30, lpx + 45, lpy - 30, 2); 
+    drawCuteLine(lpx + 45, lpy - 30, lpx + 45, lpy - 4, 2); 
+    drawCuteLine(lpx + 45, lpy - 4, lpx - 45, lpy - 4, 2); 
+    drawCuteLine(lpx - 45, lpy - 4, lpx - 45, lpy - 30, 2);
+    ctx.fillStyle = '#4A4A4A'; ctx.font = 'bold 12px "Microsoft JhengHei", sans-serif'; 
+    ctx.fillText("排行榜", lpx - 18, lpy - 12);
 
-    if (ghostHideTimer === 0) {
+    let rpx = 285, rpy = 365;
+    drawCuteLine(rpx, rpy - 40, rpx + 2, rpy - 4, 3, '#D7C49E'); 
+    ctx.fillStyle = (socialTab === '動態') ? '#CDA45E' : '#E6CD9C'; 
+    ctx.fillRect(rpx - 55, rpy - 30, 110, 26);
+    drawCuteLine(rpx - 55, rpy - 30, rpx + 55, rpy - 30, 2); 
+    drawCuteLine(rpx + 55, rpy - 30, rpx + 55, rpy - 4, 2); 
+    drawCuteLine(rpx + 55, rpy - 4, rpx - 55, rpy - 4, 2); 
+    drawCuteLine(rpx - 55, rpy - 4, rpx - 55, rpy - 30, 2);
+    ctx.fillStyle = '#4A4A4A'; ctx.font = 'bold 12px "Microsoft JhengHei", sans-serif'; 
+    ctx.fillText("好友動態牆", rpx - 30, rpy - 12);
+
+    if (socialTab === '排行榜' && ghostHideTimer === 0) {
         let ghostFloat = Math.sin(Date.now() * 0.005) * 2.5; 
-        ctx.save(); ctx.fillStyle = '#FFFFFF'; ctx.globalAlpha = 0.92; ctx.beginPath(); ctx.arc(px - 32, py - 34 + ghostFloat, 9, Math.PI, 0, false); ctx.lineTo(px - 23, py - 29 + ghostFloat); ctx.lineTo(px - 41, py - 29 + ghostFloat); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = '#000000'; ctx.beginPath(); ctx.arc(px - 35, py - 36 + ghostFloat, 1.5, 0, Math.PI*2); ctx.arc(px - 29, py - 36 + ghostFloat, 1.5, 0, Math.PI*2); ctx.fill(); ctx.restore();
+        ctx.save(); ctx.fillStyle = '#FFFFFF'; ctx.globalAlpha = 0.92; ctx.beginPath(); ctx.arc(lpx - 32, lpy - 34 + ghostFloat, 9, Math.PI, 0, false); ctx.lineTo(lpx - 23, lpy - 29 + ghostFloat); ctx.lineTo(lpx - 41, lpy - 29 + ghostFloat); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#000000'; ctx.beginPath(); ctx.arc(lpx - 35, lpy - 36 + ghostFloat, 1.5, 0, Math.PI *2); ctx.arc(lpx - 29, lpy - 36 + ghostFloat, 1.5, 0, Math.PI* 2); ctx.fill(); ctx.restore();
     }
 
-    let branchY = py + 8; drawCuteLine(px - 42, branchY, px + 42, branchY, 2); 
-    ctx.save(); ctx.translate(px, branchY); ctx.rotate(tagHangingShock * Math.PI / 180); 
-    let t1x = -26, t1y = 22; ctx.strokeStyle = '#757575'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(t1x, t1y - 12, 3, 0, Math.PI*2); ctx.stroke(); ctx.fillStyle = '#E8C547'; ctx.beginPath(); ctx.arc(t1x, t1y, 11, 0, Math.PI*2); ctx.fill(); drawCuteCircle(t1x, t1y, 11, 1.5); ctx.fillStyle = '#4A4A4A'; ctx.font = 'bold 11px "Comic Sans MS", sans-serif'; ctx.fillText("1", t1x - 3, t1y + 4);
-    let t2x = 0, t2y = 24; ctx.beginPath(); ctx.arc(t2x, t2y - 12, 3, 0, Math.PI*2); ctx.stroke(); ctx.fillStyle = '#C0C0C0'; ctx.beginPath(); ctx.arc(t2x, t2y, 11, 0, Math.PI*2); ctx.fill(); drawCuteCircle(t2x, t2y, 11, 1.5); ctx.fillStyle = '#4A4A4A'; ctx.fillText("2", t2x - 3, t2y + 4);
-    let t3x = 26, t3y = 22; ctx.beginPath(); ctx.arc(t3x, t3y - 12, 3, 0, Math.PI*2); ctx.stroke(); ctx.fillStyle = '#CD7F32'; ctx.beginPath(); ctx.arc(t3x, t3y, 11, 0, Math.PI*2); ctx.fill(); drawCuteCircle(t3x, t3y, 11, 1.5); ctx.fillStyle = '#4A4A4A'; ctx.fillText("3", t3x - 3, t3y + 4);
+    let branchY = lpy + 8; drawCuteLine(boardX + 20, branchY, boardX + boardW - 20, branchY, 2); 
+    ctx.save(); ctx.translate(boardX + boardW/2, branchY); ctx.rotate(tagHangingShock * Math.PI / 180); 
+    let t1x = -26, t1y = 22; ctx.strokeStyle = '#757575'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(t1x, t1y - 12, 3, 0, Math.PI *2); ctx.stroke(); ctx.fillStyle = '#E8C547'; ctx.beginPath(); ctx.arc(t1x, t1y, 11, 0, Math.PI* 2); ctx.fill(); drawCuteCircle(t1x, t1y, 11, 1.5); ctx.fillStyle = '#4A4A4A'; ctx.font = 'bold 11px "Comic Sans MS", sans-serif'; ctx.fillText("1", t1x - 3, t1y + 4);
+    let t2x = 0, t2y = 24; ctx.beginPath(); ctx.arc(t2x, t2y - 12, 3, 0, Math.PI *2); ctx.stroke(); ctx.fillStyle = '#C0C0C0'; ctx.beginPath(); ctx.arc(t2x, t2y, 11, 0, Math.PI* 2); ctx.fill(); drawCuteCircle(t2x, t2y, 11, 1.5); ctx.fillStyle = '#4A4A4A'; ctx.fillText("2", t2x - 3, t2y + 4);
+    let t3x = 26, t3y = 22; ctx.beginPath(); ctx.arc(t3x, t3y - 12, 3, 0, Math.PI *2); ctx.stroke(); ctx.fillStyle = '#CD7F32'; ctx.beginPath(); ctx.arc(t3x, t3y, 11, 0, Math.PI* 2); ctx.fill(); drawCuteCircle(t3x, t3y, 11, 1.5); ctx.fillStyle = '#4A4A4A'; ctx.fillText("3", t3x - 3, t3y + 4);
     ctx.restore();
 }
 
@@ -692,17 +760,32 @@ function renderTrialBattlefield() {
     drawCuteLine(bx, by, bx+bw, by, 3); drawCuteLine(bx+bw, by, bx+bw, by+bh, 3); drawCuteLine(bx+bw, by+bh, bx, by+bh, 3); drawCuteLine(bx, by+bh, bx, by, 3);
     
     ctx.fillStyle = '#FF5252'; ctx.font = 'bold 16px "Microsoft JhengHei", sans-serif'; ctx.fillText("⚔️ 遭遇突襲！飛升試煉降臨", bx + 20, by + 35);
-    ctx.fillStyle = '#4A4A4A'; ctx.font = '12px "Microsoft JhengHei", sans-serif'; ctx.fillText(trialQuestion.substring(0, 25), bx + 20, by + 75); ctx.fillText(trialQuestion.substring(25), bx + 20, by + 100);
+    
+    ctx.fillStyle = '#4A4A4A'; ctx.font = '12px "Microsoft JhengHei", sans-serif';    
+    ctx.fillText(trialScenarios[trialIndex].question.substring(0, 25), bx + 20, by + 75);         
+    ctx.fillText(trialScenarios[trialIndex].question.substring(25), bx + 20, by + 100);
 
     let ax = 70, ay = 280, ar = 24;
+    let bx2 = 70, by2 = 360; 
+
     ctx.fillStyle = '#B5EAD7'; ctx.beginPath(); ctx.arc(ax, ay, ar, 0, Math.PI*2); ctx.fill(); drawCuteCircle(ax, ay, ar, 2.5);
     ctx.fillStyle = '#4A4A4A'; ctx.font = 'bold 16px "Microsoft JhengHei", sans-serif'; ctx.fillText("A", ax - 6, ay + 6);
-    ctx.font = '12px "Microsoft JhengHei", sans-serif'; ctx.fillText(trialAnserA, ax + 35, ay + 5);
+    ctx.font = '12px "Microsoft JhengHei", sans-serif'; ctx.fillText(trialScenarios[trialIndex].answerA, ax + 35, ay + 5);
 
-    let bx2 = 70, by2 = 360;
     ctx.fillStyle = '#FFB7B2'; ctx.beginPath(); ctx.arc(bx2, by2, ar, 0, Math.PI*2); ctx.fill(); drawCuteCircle(bx2, by2, ar, 2.5);
     ctx.fillStyle = '#4A4A4A'; ctx.font = 'bold 16px "Microsoft JhengHei", sans-serif'; ctx.fillText("B", bx2 - 6, by2 + 6);
-    ctx.fillStyle = '#4A4A4A'; ctx.font = '12px "Microsoft JhengHei", sans-serif'; ctx.fillText(trialAnserB, bx2 + 35, by2 + 5);
+    ctx.fillStyle = '#4A4A4A'; ctx.font = '12px "Microsoft JhengHei", sans-serif';
+    ctx.fillText(trialScenarios[trialIndex].answerB, bx2 + 35, by2 + 5);
+
+    // ⏩ 右下角手繪風【跳過試煉】按鈕對齊安置
+    let skX = 295, skY = 515, skW = 85, skH = 28;
+    ctx.fillStyle = '#EAEAEA'; ctx.fillRect(skX, skY, skW, skH);
+    drawCuteLine(skX, skY, skX + skW, skY, 2);
+    drawCuteLine(skX + skW, skY, skX + skW, skY + skH, 2);
+    drawCuteLine(skX + skW, skY + skH, skX, skY + skH, 2);
+    drawCuteLine(skX, skY + skH, skX, skY, 2);
+    ctx.fillStyle = '#757575'; ctx.font = 'bold 12px "Microsoft JhengHei", sans-serif';
+    ctx.fillText("⏩ 跳過試煉", skX + 10, skY + 18);
 
     if (trialFeedbackTimer > 0) {
         ctx.fillStyle = 'rgba(255,255,255,0.95)'; ctx.fillRect(40, 440, 320, 50);
@@ -741,7 +824,7 @@ canvas.addEventListener('mousedown', function(e) {
     const mx = e.clientX - rect.left; const my = e.clientY - rect.top;
     if (currentPage === '結' && sub结Mode === '平衡儀' && appState === 'MAIN') {
         for (let i = 0; i < 10; i++) {
-            let item = balanceEcosystem[i]; if (Math.hypot(mx - item.x, my - item.y) < 22) { draggedCircleIndex = i; break; }
+            let item = balanceEcosystem[i]; if (Math.hypot(mx - item.x, my - item.y) < 30) { draggedCircleIndex = i; break; }
         }
     }
 });
@@ -752,7 +835,7 @@ canvas.addEventListener('mousemove', function(e) {
         const mx = e.clientX - rect.left; const my = e.clientY - rect.top;
         let cx = canvas.width / 2; let cy = canvas.height / 2 + 32;
         let dist = Math.hypot(mx - cx, my - cy);
-        let targetBudget = Math.round((dist - 45) / 110 * 300);
+        let targetBudget = Math.round((dist - 75) / 135 * 300);
         updateEcosystem守恆(draggedCircleIndex, targetBudget);
     }
 });
@@ -774,15 +857,35 @@ canvas.addEventListener('click', function(e) {
 
     if (appState === 'TRIAL') {
         let ax = 70, ay = 280, bx2 = 70, by2 = 360, ar = 24;
-        if (Math.hypot(mx - ax, my - ay) < ar) { trialFeedbackText = "⚡ 降下天雷把癮癮劈飛！內功靈力+5，信心大增！"; trialFeedbackTimer = 120; return; }
-        if (Math.hypot(mx - bx2, my - by2) < ar) { trialFeedbackText = "🦊 癮癮長大三倍發出大笑！帳簿被塞入心魔種子！"; trialFeedbackTimer = 120; return; }
+        if (Math.hypot(mx - ax, my - ay) < ar) { 
+            trialFeedbackText = trialScenarios[trialIndex].feedbackA; 
+            trialFeedbackTimer = 180; 
+            return; 
+        }
+        if (Math.hypot(mx - bx2, my - by2) < ar) { 
+            trialFeedbackText = trialScenarios[trialIndex].feedbackB; 
+            trialFeedbackTimer = 180; 
+            return; 
+        }
+        // ⏩ 【跳過試煉】Hitbox 偵測範圍精準與 y:515 對齊
+        let skX = 295, skY = 515, skW = 85, skH = 28;
+        if (mx > skX && mx < skX + skW && my > skY && my < skY + skH) {
+            appState = 'MAIN'; 
+            return;
+        }
         return;
     }
 
+    // 🔮【大改版月度彈窗】雙按鈕 Hitbox 精準切割
     if (appState === 'MONTH_AWAKE' && currentPage === '帳') {
-        if (mx > 140 && mx < 260 && my > 380 && my < 412) {
+        // 1. 點擊左邊【返回修行 / 悔過】 (x: 60~190)
+        if (mx > 60 && mx < 190 && my > 380 && my < 412) {
             if (awakeReportStatus === 'LOSE') { currentPage = '結'; sub结Mode = '平衡儀'; }
             appState = 'MAIN';
+        }
+        // 2. 點擊右邊【🔮 煉製因果冥卷】 (x: 210~340)
+        if (mx > 210 && mx < 340 && my > 380 && my < 412) {
+            exportKarmaReportPDF(); // 召喚 PDF 導出法陣
         }
         return;
     }
@@ -796,7 +899,10 @@ canvas.addEventListener('click', function(e) {
                 infoAlertText = ""; infoAlertTimer = 0; draggedCircleIndex = -1;
                 boardShockTimer = 0; ghostHideTimer = 0;
                 if (currentPage === '修') introProgress = 0;
-                if (currentPage === '修' && Math.random() < 0.25) { appState = 'TRIAL'; }
+                if (currentPage === '修' && Math.random() < 0.25) { 
+                    appState = 'TRIAL'; 
+                    trialIndex = Math.floor(Math.random() * trialScenarios.length); 
+                }
             }
         }
     });
@@ -804,8 +910,21 @@ canvas.addEventListener('click', function(e) {
 
     if (currentPage === '社') {
         let boardX = 40, boardY = 110, boardW = 320, boardH = 195;
-        if (mx > 40 && mx < 130 && my > 320 && my < 460) { boardShockTimer = 15; ghostHideTimer = 90; tagHangingShock = 35; socialTab = (socialTab === '動態') ? '排行榜' : '動態'; return; }
-        if (mx > boardX + 12 && mx < boardX + boardW - 12 && my > boardY + 12 && my < boardY + boardH - 12) { boardShockTimer = 20; alert("🔮【因果窺探鏡】對方生存剩餘 14 天 ｜ 主神靈健康無恙。"); return; }
+        if (mx > 40 && mx < 130 && my > 335 && my < 361) {
+            boardShockTimer = 15; ghostHideTimer = 0; tagHangingShock = 35;
+            socialTab = '排行榜'; 
+            return; 
+        }
+        if (mx > 230 && mx < 340 && my > 335 && my < 361) {
+            boardShockTimer = 15; ghostHideTimer = 90; tagHangingShock = -35;
+            socialTab = '動態'; 
+            return; 
+        }
+        if (mx > boardX + 12 && mx < boardX + boardW - 12 && my > boardY + 12 && my < boardY + boardH - 12) { 
+            boardShockTimer = 20; 
+            alert(`🔮【因果窺探鏡】當前觀看：${socialTab} ｜ 全體公會道友靈力穩定維持中。`); 
+            return; 
+        }
     }
 
     if (currentPage === '結') {
@@ -824,7 +943,7 @@ canvas.addEventListener('click', function(e) {
         let stats = getLedgerStats(); let bx = canvas.width / 2;
         if (mx > 140 && mx < 260 && my > 296 && my < 322) { balanceShockTimer = 40; awakeReportStatus = (stats.needTotal >= stats.wantTotal) ? "WIN" : "LOSE"; appState = 'MONTH_AWAKE'; return; }
         if (dropdownOpen) {
-            let dy = 334 + 6; let dropW = 120; let dropX = 45 + 75;
+            let dy = 334 + 6; let dropW = 120; let dropX = pX + 75;
             if (mx > dropX && mx < dropX + dropW && my > dy && my < dy + 78) {
                 ledgerTab = (my < dy + 26) ? '全部支出' : (my < dy + 52) ? '需要支出' : '想要支出';
                 dropdownOpen = false; activeLedgerIndex = -1; activeLedgerDialogue = ""; return;
@@ -887,6 +1006,104 @@ canvas.addEventListener('click', function(e) {
         }
     }
 });
+
+// ==========================================
+// --- 8. 🔮 因果大敕令：三章大一統 PDF 冥卷生成大陣 ---
+// ==========================================
+function exportKarmaReportPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('p', 'mm', 'a4'); 
+    let stats = getLedgerStats();
+
+    // 1. 溫潤羊皮信箋底色與手繪邊框
+    doc.setFillColor(252, 248, 242); doc.rect(0, 0, 210, 297, 'F');
+    doc.setDrawColor(74, 74, 74); doc.setLineWidth(1); doc.rect(10, 10, 190, 277, 'S');
+
+    // 大標題
+    doc.setTextColor(122, 0, 30); doc.setFont("Helvetica", "bold"); doc.setFontSize(22);
+    doc.text("妖怪修煉場 ｜ 月度業力因果覺醒冥卷", 32, 28);
+    doc.setDrawColor(122, 0, 30); doc.setLineWidth(0.5); doc.line(20, 34, 190, 34);
+
+    // ==========================================
+    // 🛑 第一章：善惡審判（當月因果天秤總結）
+    // ==========================================
+    doc.setTextColor(74, 74, 74); doc.setFontSize(14); doc.text("【第一章：善惡審判】", 20, 48);
+    
+    // 手繪不對稱傾斜天秤黑線插圖
+    let tiltOffset = ((stats.wantPercent - stats.needPercent) / 100) * 15;
+    doc.setDrawColor(100, 100, 100); doc.setLineWidth(0.8);
+    doc.line(105, 58, 105, 80); // 天秤支柱
+    doc.line(70, 68 - tiltOffset, 140, 68 + tiltOffset); // 吊臂
+    doc.line(70, 68 - tiltOffset, 65, 78); doc.line(70, 68 - tiltOffset, 75, 78); 
+    doc.line(140, 68 + tiltOffset, 135, 78); doc.line(140, 68 + tiltOffset, 145, 78); 
+    doc.setFillColor(200, 200, 200); doc.ellipse(70, 78, 12, 2, 'F'); doc.ellipse(140, 78, 12, 2, 'F'); 
+
+    // 核心數據資訊
+    doc.setFontSize(11);
+    doc.text(`本月消耗靈石總計：$${stats.grandTotal} 元`, 25, 92);
+    doc.setTextColor(74, 144, 226); doc.text(`守護靈【需要】正氣佔比：${stats.needPercent} %`, 25, 100);
+    doc.setTextColor(255, 107, 107); doc.text(`欲望魔【想要】業障佔比：${stats.wantPercent} %`, 25, 108);
+
+    // 適性化敕令學派評語
+    doc.setTextColor(122, 0, 30); doc.text("守護神狐仙敕令點評：", 25, 118);
+    doc.setTextColor(74, 74, 74);
+    let appText = "";
+    if (userSchool === '鋼鐵自律') {
+        appText = `「自律流省思：道友本月讓『想要』的比例佔了 ${stats.wantPercent}%，手顯然有些發癢！\n  再去平衡花園亂拉果實，下個月天秤徹底翻倒，財庫將原地崩毀！」`;
+    } else if (userSchool === '數據分析') {
+        appText = `「分析流省思：理性靈力佔比為 ${stats.needPercent}%，因果結構尚算工整。\n  你成功以數據天秤壓制了無明衝動心魔，實乃公會合格的清心居士。」`;
+    } else {
+        appText = `「守護流省思：本月平平安安地扣鎖財庫，阻絕了大部分的貪戀業障。\n  穩紮穩打守住當下，月底才能幫神器進行完美淬火。」`;
+    }
+    doc.text(appText, 25, 126);
+
+    // ==========================================
+    // 📊 第二章：百妖現形（預算花園與失控心魔對比）
+    // ==========================================
+    doc.setFontSize(14); doc.text("【第二章：百妖現形】", 20, 150);
+    
+    // 歪斜不規則的雙線理想軌跡網格圖
+    doc.setDrawColor(180, 180, 180); doc.setLineDashPattern([2, 2], 0); doc.rect(30, 160, 50, 40, 'S'); // 月初理想虛線
+    doc.setDrawColor(74, 74, 74); doc.setLineDashPattern([], 0); doc.setLineWidth(0.6);
+    doc.rect(28 + Math.random()*4, 162 + Math.random()*3, 52, 36, 'S'); // 月底實際黑粗線
+
+    // 自動抓出超支大魔王
+    let worstWant = wantLedgerData.reduce((max, item) => item.amount > max.amount ? item : max, wantLedgerData[0]);
+    let monsterName = worstWant.amount > 0 ? "欲望妖怪・癮癮" : "饕餮饞饞";
+    if (worstWant.label === "消費") monsterName = "衝動剁手怪";
+    if (worstWant.label === "食物") monsterName = "爆食大魔王";
+
+    doc.setFontSize(11); doc.setTextColor(122, 0, 30);
+    doc.text(`🚨 本月重災區特寫：【一級通緝 ｜ ${monsterName}】`, 95, 166);
+    doc.setTextColor(74, 74, 74);
+    let monsterReport = worstWant.amount > 0 ? 
+        `「此妖本月在『${worstWant.label}』 category 被你瘋狂餵食了 ${worstWant.count} 次！\n  牠貪婪地吸飽了你整整 $${worstWant.amount} 元的荷包靈力，體型暴增 200%。\n  因為道友在衝動與破戒之下的餵食，牠已成功啃食了你\n  多天的預估生存壽命，請道友立馬去花園調低預算！」` :
+        `「本月尚未遭遇巨型欲望魔暴走，守護米寶與水靈安全流轉。\n  但不可掉以輕心，各 category 的心魔依然在暗處窺伺你的業力天秤。」`;
+    doc.text(monsterReport, 95, 176);
+
+    // ==========================================
+    // 📝 第三章：下月敕令（修煉契約與簽名欄）
+    // ==========================================
+    doc.setFontSize(14); doc.text("【第三章：下月修煉契約】", 20, 222);
+    doc.setFontSize(11);
+    doc.text("・百妖圖鑑解鎖進度：本月成功收服理性生靈，當前靈力防禦塔運作良好。", 25, 232);
+    
+    let nextMonthGuide = stats.wantPercent > 40 ? 
+        "經系統因果預測，你下個月的物慾有黑化風險。\n敕令：下月平衡儀預算下調 15%，並在戒律卷軸中追加 2 次禁令！" :
+        "因果流轉穩定。下月修行指引：維持當前平衡 gardens 結界，容許追加 1 次剛需法器購置。";
+    doc.setTextColor(122, 0, 30); doc.text("下月修行指引：", 25, 242);
+    doc.setTextColor(74, 74, 74); doc.text(nextMonthGuide, 25, 250);
+
+    // 實體簽名大彩蛋
+    doc.setDrawColor(150, 150, 150); doc.setLineDashPattern([3, 3], 0); doc.rect(20, 264, 170, 18, 'S');
+    doc.setLineDashPattern([], 0); doc.setTextColor(122, 0, 30); doc.setFontSize(11);
+    doc.text("「修行不可欺心，立字為據。」", 25, 271);
+    doc.setTextColor(74, 74, 74); doc.text("修行者法號(簽名): ____________________", 25, 278);
+    doc.setTextColor(122, 0, 30); doc.text("守護神狐仙敕印：[ 留白處 ]", 132, 278);
+
+    // 發動法陣，儲存下載 PDF
+    doc.save(`妖怪修煉場-月度業力報告-${awakeReportStatus}.pdf`);
+}
 
 initLayout();
 triggerFoxSpeech('開期');
